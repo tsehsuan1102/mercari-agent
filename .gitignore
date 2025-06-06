@@ -16,3 +16,6 @@ venv/
 # test data
 data/
 
+
+# pyenv
+.python-version
