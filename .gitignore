@@ -16,6 +16,7 @@ venv/
 # test data
 data/
 
-
 # pyenv
 .python-version
+
+__pycache__/

@@ -1,15 +1,10 @@
-# app = Flask(__name__)
-
-
-# @app.route("/")
-# def main():
-#     return f"Hello, World!"
+from src.scraper import mercari_scraper
 
 
 def main():
     print("Hello, World!")
+    mercari_scraper.search_mercari("iphone 15")
 
 
 if __name__ == "__main__":
     main()
-    # app.run(debug=True)
