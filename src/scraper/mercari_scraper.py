@@ -242,7 +242,7 @@ def search_mercari(query: str) -> List[MercariItem]:
             print(f"[Scraper] Error parsing product: {e}")
     driver.quit()
     print(f"[Scraper] Found {len(items)} items for query '{query}'.")
-    return items
+    return items[:20]
 
 
 if __name__ == "__main__":
