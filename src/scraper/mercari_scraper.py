@@ -170,10 +170,41 @@ def get_filters(driver):
     return filters
 
 
-def search_mercari(query: str) -> List[MercariItem]:
-    print(f"[Scraper] Searching Mercari for: {query}")
-    encoded_query = urllib.parse.quote(query)
-    url = BASE_URL + encoded_query
+def build_search_url(filters: dict) -> str:
+    base_url = "https://jp.mercari.com/search"
+    params = {}
+    if filters.get("keyword"):
+        params["keyword"] = filters["keyword"]
+    if filters.get("categoryId"):
+        params["category_id"] = filters["categoryId"][0]
+    if filters.get("priceMin"):
+        params["price_min"] = filters["priceMin"]
+    if filters.get("priceMax"):
+        params["price_max"] = filters["priceMax"]
+    if filters.get("itemConditionId"):
+        params["item_condition_id"] = ",".join(filters["itemConditionId"])
+    if filters.get("sort"):
+        sort_map = {
+            "SORT_CREATED_TIME": "created_time",
+            "SORT_SCORE": "score",
+            "SORT_PRICE": "price",
+            "SORT_NUM_LIKES": "num_likes",
+        }
+        sort_val = sort_map.get(filters["sort"], None)
+        if sort_val:
+            params["sort"] = sort_val
+    if filters.get("order"):
+        order_map = {"ORDER_DESC": "desc", "ORDER_ASC": "asc"}
+        order_val = order_map.get(filters["order"], None)
+        if order_val:
+            params["order"] = order_val
+    query = urllib.parse.urlencode(params, doseq=True)
+    return f"{base_url}?{query}"
+
+
+def search_mercari(filters: dict) -> List[MercariItem]:
+    print(f"[Scraper] Searching Mercari with filters: {filters}")
+    url = build_search_url(filters)
     print(f"[Scraper] URL: {url}")
 
     options = Options()
@@ -183,12 +214,10 @@ def search_mercari(query: str) -> List[MercariItem]:
     driver = webdriver.Chrome(options=options)
 
     driver.get(url)
-    # 新增：抓取篩選條件
-    filters = get_filters(driver)
-    print("[Scraper] Filters:")
-    import json
-
-    print(json.dumps(filters, ensure_ascii=False, indent=2))
+    # filters_info = get_filters(driver)
+    # print("[Scraper] Filters:")
+    # import json
+    # print(json.dumps(filters_info, ensure_ascii=False, indent=2))
     try:
         WebDriverWait(driver, 10).until(
             EC.presence_of_element_located(
@@ -233,7 +262,7 @@ def search_mercari(query: str) -> List[MercariItem]:
                     name=name,
                     price=price,
                     image=image_url,
-                    url=f"https://jp.mercari.com{href}" if href else None,
+                    url=href if href else None,
                     item_id=item_id,
                     itemtype=itemtype,
                 )
@@ -241,7 +270,9 @@ def search_mercari(query: str) -> List[MercariItem]:
         except Exception as e:
             print(f"[Scraper] Error parsing product: {e}")
     driver.quit()
-    print(f"[Scraper] Found {len(items)} items for query '{query}'.")
+    print(
+        f"[Scraper] Found {len(items)} items for query '{filters.get('keyword', '')}'."
+    )
     return items[:20]
 
 

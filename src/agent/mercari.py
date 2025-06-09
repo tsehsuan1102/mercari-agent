@@ -18,12 +18,19 @@ load_dotenv()
 mercari_search_tool = {
     "type": "function",
     "name": "mercari_search",
-    "description": "Search Mercari for products based on user criteria. Returns a list of product dicts.",
+    "description": (
+        "Search Mercari for products based on user criteria. "
+        "Returns a list of product dicts. "
+        "Only include parameters that are explicitly mentioned or implied in the user's request. "
+        "Do not generate or fill in any parameters that the user did not mention. "
+        "Leave all other parameters unset. "
+        "Infer filters strictly from the user's input."
+    ),
     "parameters": {
         "type": "object",
         "properties": {
             "keyword": {"type": "string", "description": "Search keyword(s)"},
-            # "excludeKeyword": {"type": "string", "description": "Exclude keyword(s)"},
+            "excludeKeyword": {"type": "string", "description": "Exclude keyword(s)"},
             "sort": {
                 "type": "string",
                 "description": "Sort type. One of: SORT_CREATED_TIME, SORT_SCORE, SORT_PRICE, SORT_NUM_LIKES",
@@ -37,28 +44,43 @@ mercari_search_tool = {
             "order": {
                 "type": "string",
                 "description": "Order type, e.g. ORDER_DESC, ORDER_ASC",
+                "enum": [
+                    "ORDER_DESC",
+                    "ORDER_ASC",
+                ],
             },
-            # "status": {"type": "array", "items": {"type": "string"}},
-            # "sizeId": {"type": "array", "items": {"type": "string"}},
-            # "categoryId": {"type": "array", "items": {"type": "string"}},
-            # "brandId": {"type": "array", "items": {"type": "string"}},
-            # "sellerId": {"type": "array", "items": {"type": "string"}},
-            # "priceMin": {"type": "integer"},
-            # "priceMax": {"type": "integer"},
-            # "itemConditionId": {"type": "array", "items": {"type": "string"}},
-            # "shippingPayerId": {"type": "array", "items": {"type": "string"}},
-            # "shippingFromArea": {"type": "array", "items": {"type": "string"}},
-            # "shippingMethod": {"type": "array", "items": {"type": "string"}},
-            # "colorId": {"type": "array", "items": {"type": "string"}},
-            # "hasCoupon": {"type": "boolean"},
-            # "createdAfterDate": {"type": "string"},
-            # "createdBeforeDate": {"type": "string"},
-            # "attributes": {"type": "array", "items": {"type": "string"}},
-            # "itemTypes": {"type": "array", "items": {"type": "string"}},
-            # "skuIds": {"type": "array", "items": {"type": "string"}},
-            # "shopIds": {"type": "array", "items": {"type": "string"}},
-            # "promotionValidAt": {"type": ["string", "null"]},
-            # "excludeShippingMethodIds": {"type": "array", "items": {"type": "string"}},
+            # "status": {
+            #     "type": "array",
+            #     "items": {"type": "string", "enum": ["OPENED", "SOLD_OUT"]},
+            #     "description": "Product status (OPENED,)",
+            # },
+            "categoryId": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Category ID(s)",
+            },
+            "priceMin": {"type": "integer", "description": "Minimum price"},
+            "priceMax": {"type": "integer", "description": "Maximum price"},
+            "itemConditionId": {
+                "type": "array",
+                "items": {
+                    "type": "string",
+                    "enum": [
+                        "1",  # 新品、未使用
+                        "2",  # 未使用に近い
+                        "3",  # 目立った傷や汚れなし
+                        "4",  # やや傷や汚れあり
+                        "5",  # 傷や汚れあり
+                        "6",  # 全体的に状態が悪い
+                    ],
+                },
+                "description": "Item condition: 1=新品・未使用, 2=未使用に近い, 3=目立った傷や汚れなし, 4=やや傷や汚れあり, 5=傷や汚れあり, 6=全体的に状態が悪い",
+            },
+            "itemTypes": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Item types",
+            },
         },
         "required": ["keyword"],
         "additionalProperties": False,
@@ -98,18 +120,24 @@ class MercariAgent:
         self.all_results = {}
 
     def agent_respond(self, user_input: str) -> dict:
-        system_prompt = (
-            "You are a helpful shopping assistant for Mercari Japan. "
-            "You can use the 'mercari_search' tool to search for products based on user needs. "
-            "You can also use the 'get_recommend_product' tool to select the top 3 recommended products from a list. "
-            "After using the tools, summarize the recommendations in a Markdown table with columns: Name, Price, Reason, Link, Image. "
-            "Be persuasive and user-friendly in your explanations."
+        system_prompt = str(
+            "\n".join(
+                [
+                    "You are a helpful shopping assistant for Mercari Japan. ",
+                    "You can use the 'mercari_search' tool to search for products based on user needs. ",
+                    "You can also use the 'get_recommend_product' tool to select the top 3 recommended products from a list. ",
+                    "After using the tools, summarize the recommendations in a concise way. ",
+                    # Markdown table with columns: Name, Price, Reason, Link, Image. "
+                    # "Be persuasive and user-friendly in your explanations.",
+                ]
+            )
         )
+
         messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_input},
         ]
-        tools = [mercari_search_tool, get_recommend_product_tool]
+        tools = [mercari_search_tool]
         self.all_results = {}
 
         while True:
@@ -122,11 +150,10 @@ class MercariAgent:
                 function_name = getattr(output, "name", None)
                 call_id = getattr(output, "call_id", None)
                 args = json.loads(getattr(output, "arguments", "{}"))
-                print(function_name)
-                print(call_id)
-                print(args)
+                print("### [Tool name]: ", function_name)
+                print("### [Args]: ", args)
                 if function_name == "mercari_search":
-                    mercari_items = search_mercari(args.get("keyword", ""))
+                    mercari_items = search_mercari(args)
                     search_results = [
                         {
                             "name": item.name,
@@ -147,14 +174,10 @@ class MercariAgent:
                             "output": json.dumps(search_results),
                         }
                     )
-                elif function_name == "get_recommend_product":
-                    products = args.get("products", [])
-                    user_request = args.get("user_request", "")
                     top_products = self.recommend_products(
-                        user_request, products, GPTModel.GPT_4_1_MINI
+                        user_input, search_results, GPTModel.GPT_4_1_MINI, 3
                     )
                     self.all_results["top3"] = top_products.get("products", [])
-                    messages.append(output)
                     messages.append(
                         {
                             "type": "function_call_output",
@@ -172,21 +195,20 @@ class MercariAgent:
                 return {
                     "message": message,
                     "products": self.all_results.get("top3", []),
-                    "raw_results": self.all_results.get("search_results", []),
+                    # "raw_results": self.all_results.get("search_results", []),
                 }
 
     def recommend_products(
-        self, user_input: str, search_results: list, model: str
+        self, user_input: str, search_results: list, model: str, k: int = 3
     ) -> dict:
         """
-        Use LLM to recommend products based on user input and search results.
+        Use LLM to pick and recommend the top 3 products from all search results, and return as a JSON list of item_id.
         """
         system_prompt = (
             "You are a helpful shopping assistant for Mercari Japan. "
             "You will receive a list of products from Mercari and a user's shopping request. "
-            "For each product, provide a clear and concise reason for your recommendation, considering factors such as price, product condition, seller reputation, and keyword relevance. "
-            "Present your recommendations in a Markdown table with the following columns: Name, Price, Reason, Link, Image. "
-            "Be persuasive and user-friendly in your explanations."
+            f"Please pick the top {k} products that best match the user's needs, and directly return a JSON list of their item_id (e.g. ['id1', 'id2', 'id3']). "
+            "Do not return any explanation, only the JSON list."
         )
         messages = [
             {"role": "system", "content": system_prompt},
@@ -194,7 +216,7 @@ class MercariAgent:
             {
                 "role": "assistant",
                 "content": (
-                    "Here are the 3 selected products from Mercari (in JSON):\n"
+                    "Here are all the products from Mercari (in JSON):\n"
                     f"{json.dumps(search_results, ensure_ascii=False)}"
                 ),
             },
@@ -202,10 +224,19 @@ class MercariAgent:
         response = self.client.chat.completions.create(
             model=model,
             messages=messages,
-            temperature=0.7,
         )
         message = response.choices[0].message.content
+        try:
+            topk_ids = json.loads(message)
+        except Exception:
+            topk_ids = []
+        topk = []
+        for pid in topk_ids:
+            for item in search_results:
+                if str(item.get("item_id")) == str(pid):
+                    topk.append(item)
+                    break
         return {
             "message": message,
-            "products": search_results,
+            "products": topk,
         }
