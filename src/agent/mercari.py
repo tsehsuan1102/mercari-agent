@@ -20,20 +20,20 @@ mercari_search_tool = {
         "properties": {
             "keyword": {"type": "string", "description": "Search keyword(s)"},
             # "excludeKeyword": {"type": "string", "description": "Exclude keyword(s)"},
-            # "sort": {
-            #     "type": "string",
-            #     "description": "Sort type. One of: SORT_CREATED_TIME, SORT_SCORE, SORT_PRICE, SORT_NUM_LIKES",
-            #     "enum": [
-            #         "SORT_CREATED_TIME",
-            #         "SORT_SCORE",
-            #         "SORT_PRICE",
-            #         "SORT_NUM_LIKES",
-            #     ],
-            # },
-            # "order": {
-            #     "type": "string",
-            #     "description": "Order type, e.g. ORDER_DESC, ORDER_ASC",
-            # },
+            "sort": {
+                "type": "string",
+                "description": "Sort type. One of: SORT_CREATED_TIME, SORT_SCORE, SORT_PRICE, SORT_NUM_LIKES",
+                "enum": [
+                    "SORT_CREATED_TIME",
+                    "SORT_SCORE",
+                    "SORT_PRICE",
+                    "SORT_NUM_LIKES",
+                ],
+            },
+            "order": {
+                "type": "string",
+                "description": "Order type, e.g. ORDER_DESC, ORDER_ASC",
+            },
             # "status": {"type": "array", "items": {"type": "string"}},
             # "sizeId": {"type": "array", "items": {"type": "string"}},
             # "categoryId": {"type": "array", "items": {"type": "string"}},
@@ -98,6 +98,7 @@ def agent_respond(user_input: str) -> dict:
         "You can use the 'mercari_search' tool to search for products based on user needs. "
         "After getting the search results, analyze the products and select the top 3 that best match the user's needs. "
         "For each product, provide a clear and concise reason for your recommendation. "
+        "Summarize the search results in a concise, short manner. "
         "Present the recommendations in a well-structured, easy-to-understand format, preferably as a Markdown table with columns: Name, Price, Reason, Link, Image. "
     )
     messages = [
@@ -126,25 +127,8 @@ def agent_respond(user_input: str) -> dict:
                 }
                 for item in mercari_items
             ]
-            messages.append(tool_call)
-            messages.append(
-                {
-                    "type": "function_call_output",
-                    "call_id": getattr(tool_call, "call_id", None),
-                    "output": json.dumps(search_results, ensure_ascii=False),
-                }
-            )
-            final_response = client.responses.create(
-                model=GPT_MODEL, input=messages, tools=[mercari_search_tool]
-            )
-            message = getattr(final_response.output[0], "content", "")
-            # extract top products from LLM output
-            products = extract_top_products_from_message(message, search_results)
-            return {
-                "message": message,
-                "products": products,
-                "raw_results": search_results,
-            }
+            # 直接用 LLM 產生推薦
+            return recommend_products_llm(user_input, search_results, client, GPT_MODEL)
         else:
             return {
                 "message": getattr(response.output[0], "content", ""),
@@ -157,3 +141,43 @@ def agent_respond(user_input: str) -> dict:
             "products": [],
             "raw_results": [],
         }
+
+
+def recommend_products_llm(
+    user_input: str, search_results: list, client, model: str
+) -> dict:
+    """
+    用 LLM 根據用戶需求與商品清單，產生推薦理由與推薦商品
+    """
+    system_prompt = (
+        "You are a helpful shopping assistant for Mercari Japan. "
+        "You will receive a list of products from Mercari and a user's shopping request. "
+        "Your job is to analyze the products and select the 3 best matches for the user's needs. "
+        "For each recommended product, provide a clear and concise reason for your recommendation, considering factors such as price, product condition, seller reputation, and keyword relevance. "
+        "Present your recommendations in a Markdown table with the following columns: Name, Price, Reason, Link, Image. "
+        "Be persuasive and user-friendly in your explanations."
+    )
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_input},
+        {
+            "role": "assistant",
+            "content": (
+                "Here are the search results from Mercari (in JSON):\n"
+                f"{json.dumps(search_results, ensure_ascii=False)}"
+            ),
+        },
+    ]
+    response = client.chat.completions.create(
+        model=model,
+        messages=messages,
+        temperature=0.7,
+    )
+    message = response.choices[0].message.content
+    # 你可以用 extract_top_products_from_message 來抽出推薦商品
+    products = extract_top_products_from_message(message, search_results)
+    return {
+        "message": message,
+        "products": products,
+        "raw_results": search_results,
+    }
