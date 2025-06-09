@@ -1,57 +1,94 @@
-# mercari-agent
+# Mercari Japan AI Shopping Agent
+
+## Overview
+This project is a Python-based AI agent that help user searches for products on Mercari Japan, and recommends the top 3 items with clear reasoning.
+The agent leverages OpenAI's function calling to interpret user intent, generates Japanese search keywords, scrapes product data using Selenium, and outputs user-friendly recommendations.
+
+## Setup Instructions
+### 1 Install Dependencies
+Make sure you have Python 3.10 or later installed.
+Install all required packages using pip:
+```
+pip install -r requirements.txt
+```
+### 2 Setup OpenAI API Key
+Create a `.env` file in the project root:
+```
+OPENAI_API_KEY=sk-xxxxx
+```
+
+> Note: The API key is not included in this repo. I chose OpenAI because I already use it elsewhere and wanted to avoid recharging another provider for this project.
+
+## Usage Instructions
+1. Run the Agent
+`python main.py`
 
 
-Coding Challenge: Mercari Japan AI
-Shopper
-Challenge Overview
-Your goal is to develop a Python-based AI agent that can:
-1. Understand User Requests: Accurately interpret natural language requests from users
-specifying what they want to buy on Mercari Japan.
-2. Effective Mercari Search: Perform effective searches on Mercari Japan using
-appropriate keywords and filters derived from the user's request.
-3. Data Retrieval: Efficiently extract relevant product information from Mercari Japan search
-results, including product names, prices, conditions, and seller ratings (optional).
-4. Reasoned Recommendations: Analyze the retrieved data and select the top 3 product
-options that best meet the user's needs, providing clear and concise reasons for each
-recommendation.
-5. User-Friendly Output: Present the recommendations to the user in a well-structured,
-easy-to-understand format
-Technical Requirements
-● Programming Language: Python 3.10 or later
-● LLM API: You may use either the OpenAI API or the Anthropic Claude API
-○ Recommended: Claude 3.5 Sonnet is recommended for its balance of
-performance and cost-effectiveness.
-● Tool Calling Implementation: Your solution must implement an agent using the
-tool-calling mechanism. You can refer to the documentation below, but you are not
-limited to them.
-○ OpenAI's function calling API
-○ Anthropic's tool use API
-● Web Scraping: You are permitted to use libraries like `requests` and `Beautiful Soup` or
-`Scrapy` for web scraping, if necessary. Alternatively, you can use browser automation
-tools like `Selenium` or `Playwright` if it offers a more robust solution for data extraction.
-● External Libraries: You are free to use any other relevant Python libraries that you find
-helpful. Clearly document the purpose of each library in your code.
-● Framework Restrictions:
-○ No Third-Party AI Agent Frameworks: To ensure a focus on fundamental agent
-development skills, you are not permitted to use high-level AI agent frameworks.
-This includes (but is not limited to) LangChain, LangGraph, LlamaIndex, and
-similar libraries designed to simplify agent creation. However, you are welcome to
-study these frameworks or implementations to help you get onboarded with agent
-development.
-○ Permitted Libraries: You may use libraries for web scraping, data handling, and
-the official SDKs provided by OpenAI (e.g., openai) or Anthropic (e.g.,
-anthropic-python) for direct interaction with their LLM APIs.
-Deliverables
-Please submit your solution as a ZIP file containing:
-1. README.md: A Markdown file that includes:
-● Overview: A brief description of your agent's architecture and approach.
-● Setup Instructions: Detailed steps on how to install dependencies
-● Usage Instructions: Clear examples of how to run the agent and interact with it.
-● Design Choices: Explanation of any significant design decisions you made,
-especially regarding the use of the LLM and web scraping techniques.
-● Potential Improvements: Any ideas you have for further enhancing the agent's
-capabilities.
-2. Source Code: Well-commented Python code for your agent.
-3. requirements.txt: A file listing all the required Python packages for your agent.
-Good luck, and we look forward to seeing your innovative solutions!
+You will see:
+```
+Mercari Agent Test Mode: Please input your request:
+User:
+```
+
+Type your shopping request in whatever language you prefer. For example:
+
+```
+User: Looking for a used iPhone under 20000 yen
+```
+
+The agent will search, recommend the top 3 products, and provide concise reasons and product details.
+
+![Looking for a used iPhone](https://imgur.com/a/wq0FGuJ)
+
+
+2. Output Format
+- The response language matches your input language.
+- Product info includes name, price, condition, image, seller name and rating, and the reason for the recommendation.
+- The agent's output is a Python dictionary with the following structure:
+```
+{
+    "message": str,  # A concise, user-friendly summary and recommendations (in the user's language)
+    "products": List[MercariItemDetail]  # A list of dataclass objects with full product details
+}
+```
+- message: A natural-language summary and recommendations, ready to display directly to the user.
+- products: A list of MercariItemDetail objects, each containing all available product information (name, price, description, images, seller info, etc.).
+
+### Why this design?
+- Frontend Flexibility: By providing both a ready-to-display message and a structured list of product details, frontend developers can:
+    - Directly show the summary, or Use the detailed product data to build custom UI components, enable further user interactions (e.g., "view more", "save", "compare", etc.), or trigger additional actions.
+    - Rich Interactivity: The full product details make it easy to support features like product previews, deep links, or even follow-up questions about a specific item.
+
+## Design Choices
+1. Selenium for Scraping
+- Mercari's product data is rendered via JavaScript, so requests/BeautifulSoup cannot fetch results directly.
+- Initially attempted to access their API endpoints directly for testing purposes without formal integration. However, the endpoints require a valid session ID, and handling the authentication manually proved to be non-trivial. As a result, I opted to proceed with Selenium to simulate user interactions.
+- Selenium reliably extracts all required product details from the rendered frontend.
+2. LLM Function Calling
+- OpenAI function calling is used to strictly infer search filters from explicit user input.
+- Keywords are automatically translated to Japanese for more accurate search results.
+3. Recommendation Flow
+- The LLM selects the top k(3) products based on the item detail we got from the result page, then the agent scrapes each detail page of top k products for richer info (description, seller rating, etc.).
+4. Stateless Design
+- The agent is currently stateless. In the future, session/context support could enable multi-turn conversations.
+5. Multilingual Support
+- Input and output languages are automatically matched.
+6. Model Selection
+- The current model used is OpenAI GPT-4.1-mini.
+    - I compared GPT-4.1, GPT-4.1-mini, and GPT-4.1-nano using OpenAI Quick Evaluation on several test cases. GPT-4.1-mini demonstrated sufficiently stable and accurate performance for this use case.
+    - Due to cost and response time considerations, I chose not to use the full GPT-4.1 model.
+
+## Potential Improvements
+- Stateful Agent: Add session/context to support multi-turn conversations and user preferences.
+- Concurrent Scraping: Further optimize for large-scale or multi-user scenarios.
+- Richer Recommendations: Incorporate more product signals (e.g., seller history, price trends), and user history and the preferences.
+
+## Notes
+1. The scraper returns dataclass objects for easy downstream processing.
+2. Selenium is used instead of requests due to Mercari's JS-rendered content.
+3. OpenAI function calling enables rapid prototyping and evaluation.
+4. Output language matches input language.
+7. Search keywords are always translated to Japanese for best results.
+8. The agent does not yet handle concurrent/multi-user requests.
+
 
