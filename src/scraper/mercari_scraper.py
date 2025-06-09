@@ -24,6 +24,17 @@ class MercariItem:
 
 
 @dataclass
+class MercariItemDetail(MercariItem):
+    description: Optional[str] = None
+    item_condition: Optional[str] = None
+    categories: Optional[list] = None
+    images: Optional[list] = None
+    seller_name: Optional[str] = None
+    seller_rating_count: Optional[str] = None
+    seller_rating: Optional[str] = None
+
+
+@dataclass
 class MercariFilter:
     keyword: str = ""
     excludeKeyword: str = ""
@@ -202,7 +213,7 @@ def build_search_url(filters: dict) -> str:
     return f"{base_url}?{query}"
 
 
-def search_mercari(filters: dict) -> List[MercariItem]:
+def search_mercari(filters: dict, limit: int = 20) -> List[MercariItem]:
     print(f"[Scraper] Searching Mercari with filters: {filters}")
     url = build_search_url(filters)
     print(f"[Scraper] URL: {url}")
@@ -219,7 +230,7 @@ def search_mercari(filters: dict) -> List[MercariItem]:
     # import json
     # print(json.dumps(filters_info, ensure_ascii=False, indent=2))
     try:
-        WebDriverWait(driver, 10).until(
+        WebDriverWait(driver, 20).until(
             EC.presence_of_element_located(
                 (By.CSS_SELECTOR, 'a[data-testid="thumbnail-link"]')
             )
@@ -273,7 +284,109 @@ def search_mercari(filters: dict) -> List[MercariItem]:
     print(
         f"[Scraper] Found {len(items)} items for query '{filters.get('keyword', '')}'."
     )
-    return items[:20]
+    return items[:limit]
+
+
+def scrape_mercari_item(item: MercariItem) -> MercariItemDetail:
+    """
+    Scrape detailed info from a single Mercari item page.
+    Args:
+        url (str): The URL of the Mercari item.
+    Returns:
+        dict: Detailed item info.
+    """
+
+    options = Options()
+    options.add_argument("--headless")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    driver = webdriver.Chrome(options=options)
+
+    driver.get(item.url)
+    try:
+        WebDriverWait(driver, 20).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, '[data-testid="name"] h1'))
+        )
+    except Exception as e:
+        print("[Scraper] Timeout waiting for item detail:", e)
+    result = {}
+
+    try:
+        name_elem = driver.find_element(By.CSS_SELECTOR, '[data-testid="name"] h1')
+        result["name"] = name_elem.text.strip()
+    except Exception:
+        result["name"] = None
+
+    try:
+        price_elem = driver.find_element(By.CSS_SELECTOR, '[data-testid="price"]')
+        result["price"] = price_elem.text.strip()
+    except Exception:
+        result["price"] = None
+
+    try:
+        desc_elem = driver.find_element(By.CSS_SELECTOR, '[data-testid="description"]')
+        result["description"] = desc_elem.text.strip()
+    except Exception:
+        result["description"] = None
+
+    try:
+        status_elem = driver.find_element(By.CSS_SELECTOR, '[data-testid="商品の状態"]')
+        result["item_condition"] = status_elem.text.strip()
+    except Exception:
+        result["item_condition"] = None
+
+    try:
+        category_elems = driver.find_elements(
+            By.CSS_SELECTOR, '[data-testid="item-detail-category"] a'
+        )
+        result["categories"] = [a.text.strip() for a in category_elems]
+    except Exception:
+        result["categories"] = []
+
+    try:
+        image_elems = driver.find_elements(
+            By.CSS_SELECTOR, '[data-testid^="image-"] img'
+        )
+        result["images"] = [
+            img.get_attribute("src") for img in image_elems if img.get_attribute("src")
+        ]
+    except Exception:
+        result["images"] = []
+
+    try:
+        seller_elem = driver.find_element(
+            By.CSS_SELECTOR, '[data-testid="seller-link"] .content__a9529387 p'
+        )
+        result["seller_name"] = seller_elem.text.strip()
+        rating_elem = driver.find_element(
+            By.CSS_SELECTOR, '[data-testid="seller-link"] .count__60fe6cce'
+        )
+        result["seller_rating_count"] = rating_elem.text.strip()
+        star_elem = driver.find_element(
+            By.CSS_SELECTOR, '[data-testid="seller-link"] .merRating'
+        )
+        result["seller_rating"] = star_elem.get_attribute("aria-label")
+    except Exception:
+        result["seller_name"] = None
+        result["seller_rating_count"] = None
+        result["seller_rating"] = None
+
+    driver.quit()
+    return MercariItemDetail(
+        name=result.get("name"),
+        price=result.get("price"),
+        image=item.image,
+        url=item.url,
+        item_id=item.item_id,
+        itemtype=item.itemtype,
+        description=result.get("description"),
+        item_condition=result.get("item_condition"),
+        categories=result.get("categories"),
+        images=result.get("images"),
+        seller_name=result.get("seller_name"),
+        seller_rating_count=result.get("seller_rating_count"),
+        seller_rating=result.get("seller_rating"),
+    )
 
 
 if __name__ == "__main__":
