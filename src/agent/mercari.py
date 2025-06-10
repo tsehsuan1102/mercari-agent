@@ -134,6 +134,7 @@ Follow this step-by-step chain of thoughts when handling any user request:
 1. **UNDERSTAND**
     1.1 Carefully read and fully understand the user's need, desired product, or shopping context.
     1.2 Identify keywords, preferences (e.g. brand, color, price range), and any special requests.
+    1.3 Identify the user's input language. The response should be in the same language as the user's input.
 
 2. **TRANSLATE AND SEARCH**:
     2.1 Check if the main keyword or parts of it are **proper nouns** (BRANDS, CHARACTER NAMES, SERIES NAMES, GAME TITLES, ETC.).
@@ -238,13 +239,24 @@ Follow this step-by-step chain of thoughts when handling any user request:
 
         messages = [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_input},
+            {
+                "role": "user",
+                "content": f"{user_input}. IMPORTANT: The response should be in the same language as this message.",
+            },
         ]
         tools = [mercari_search_tool]
 
         while True:
             response = self.client.responses.create(
-                model=GPTModel.GPT_4_1_MINI, input=messages, tools=tools
+                model=GPTModel.GPT_4_1_MINI,
+                input=[
+                    *messages,
+                    {
+                        "role": "system",
+                        "content": f"IMPORTANT: The response should be in the same language as the user's input. Here is the user's input: {user_input}. Analyze the user's input and determine the language before responding.",
+                    },
+                ],
+                tools=tools,
             )
             output = response.output[0]
             # print(output)
@@ -316,13 +328,6 @@ Follow this step-by-step chain of thoughts when handling any user request:
                         }
                     )
                     self.all_results["top_products"] = detailed_products
-                    messages.append(
-                        {
-                            "type": "function_call_output",
-                            "call_id": call_id,
-                            "output": json.dumps(top_products),
-                        }
-                    )
                 else:
                     # unknown tool, break
                     break
