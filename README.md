@@ -38,7 +38,7 @@ User: Looking for a used iPhone under 20000 yen
 
 The agent will search, recommend the top 3 products, and provide concise reasons and product details.
 
-![Looking for a used iPhone](https://imgur.com/a/wq0FGuJ)
+![Looking for a used iPhone](https://i.imgur.com/dzTyeyA.png)
 
 
 2. Output Format
@@ -79,9 +79,19 @@ The agent will search, recommend the top 3 products, and provide concise reasons
     - Due to cost and response time considerations, I chose not to use the full GPT-4.1 model.
 
 ## Potential Improvements
-- Stateful Agent: Add session/context to support multi-turn conversations and user preferences.
-- Concurrent Scraping: Further optimize for large-scale or multi-user scenarios.
-- Richer Recommendations: Incorporate more product signals (e.g., seller history, price trends), and user history and the preferences.
+
+- **Stateful & Multi-turn Dialogue**: Enable the agent to remember user preferences, shopping history, and context across multiple turns, allowing for more natural, conversational, and personalized shopping experiences.
+
+- **User & Seller Profile Matching**: Incorporate user profiles (e.g., style, brand preferences, past purchases) and seller reputation/history to provide smarter, trust-aware recommendations.
+
+- **Multimodal Input**: Support image, video, or voice input, allowing users to search by uploading a photo of an item, describing it verbally, or even sharing a video.
+
+- **Serendipitous & Randomized Recommendations**: Occasionally suggest interesting or trending items outside the user's strict criteria, based on past user interactions or popular products, to encourage discovery and delight.
+
+- **Advanced Filtering & Faceted Search**: Allow users to refine results with advanced filters (e.g., color, size, shipping options) and dynamically update recommendations.
+
+- **Automated Bargain Alerts & Price Tracking**: Notify users when prices drop or when similar items are listed, leveraging historical price data and user watchlists.
+
 
 ## Notes
 1. The scraper returns dataclass objects for easy downstream processing.

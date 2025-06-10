@@ -99,28 +99,6 @@ mercari_search_tool = {
     },
 }
 
-# get_recommend_product_tool = {
-#     "type": "function",
-#     "name": "get_recommend_product",
-#     "description": "Given a list of products and user needs, select the top 3 recommended products and provide reasons. Return a list of product dicts.",
-#     "parameters": {
-#         "type": "object",
-#         "properties": {
-#             "products": {
-#                 "type": "array",
-#                 "items": {"type": "object"},
-#                 "description": "List of product dicts to choose from",
-#             },
-#             "user_request": {
-#                 "type": "string",
-#                 "description": "User's shopping request",
-#             },
-#         },
-#         "required": ["products", "user_request"],
-#         "additionalProperties": False,
-#     },
-# }
-
 
 class MercariAgent:
     def __init__(self, openai_api_key: str = None):
@@ -198,27 +176,63 @@ Follow this step-by-step chain of thoughts when handling any user request:
 
 ### FEW-SHOT EXAMPLES ###
 
-**Example 1: (Chinese)**
+**Example 1: (Japanese)**
 "User": `Gucciのバッグを探しています`
 "Assistant": `Mercari（メルカリ）でGucciのバッグを検索しました。以下のアイテムがおすすめです:`
-`1. Gucci GGマーモント ショルダーバッグ、約¥85,000、状態良好. 出品者: メルカリユーザー, 評価: 5.0`
-`  出品者評価も高く、人気のモデルなので安心して使えます。どんなコーディネートにも合わせやすいですよ`
-`2. Gucci スモール Soho Disco バッグ、約¥65,000、定番人気. 出品者: メルカリユーザー, 評価: 4.9`
-`  コンパクトで普段使いにぴったり。飽きがこないデザインなので長く楽しめます！`
-`3. Gucci バンブー ハンドバッグ、約¥72,000、レトロでおしゃれなデザイン. 出品者: メルカリユーザー, 評価: 4.8`
-`  他の人と差をつけたい方におすすめ✨。レトロ感が可愛く、今っぽいスタイルにもぴったりです。`
+- Product Name: Gucci GGマーモント ショルダーバッグ
+- Image:
+- Price: ¥85,000
+- Condition: 非常に良い
+- URL: https://mercari.com/item/123456
+- Seller: メルカリユーザーA, Rating: 5.0
+- Reason: 出品者評価が高く、人気モデルです。どんなコーデにも合わせやすく、安心して購入できます。
+
+- Product Name: Gucci スモール Soho Disco バッグ
+- Image:
+- Price: ¥65,000
+- Condition: 良い
+- URL: https://mercari.com/item/234567
+- Seller: メルカリユーザーB, Rating: 4.9
+- Reason: コンパクトで使いやすく、普段使いに最適。飽きのこないデザインで長く愛用できます。
+
+- Product Name: Gucci バンブー ハンドバッグ
+- Image:
+- Price: ¥72,000
+- Condition: 目立った傷や汚れなし
+- URL: https://mercari.com/item/345678
+- Seller: メルカリユーザーC, Rating: 4.8
+- Reason: レトロなバンブーデザインが魅力で、他と差をつけたい方におすすめです。今っぽいスタイルにも合います。
+
+
 `ご希望のスタイルやご予算があれば、ぜひ教えてください！`
 
 
 **Example 2: (English)**
 "User": `I'm looking for a Nintendo Switch console in Good Condition`
 "Assistant": `Mercari（メルカリ）でNintendo Switchコンソールを検索しました。以下のアイテムがおすすめです:`
-`1. Standard Nintendo Switch (Neon Red/Blue), around ¥25,000, used in good condition, which meets your needs. Seller: Mercari User, Rating: 4.9  `
-`Great choice if you want the full Switch experience (dock + handheld). Very versatile and good value for the price.`
-`2. Nintendo Switch OLED Model, around ¥34,000, like new. I believe a new one would be better for you. Seller: Mercari User, Rating: 4.8`
-`If you care about display quality, this is the best option — the OLED screen looks fantastic! Since this one is almost new, I think it would be worth it.`
-`3. Nintendo Switch Lite (Yellow), around ¥18,000, compact and affordable. If you can accept a used one, this one would be a good choice. Seller: Mercari User, Rating: 4.7`
-`Perfect if you mainly want to play in handheld mode and are looking for a more budget-friendly option. If you're okay with a used one, this is a great deal!`
+- Product Name: Nintendo Switch (Neon Red/Blue)
+- Image: 
+- Price: ¥25,000
+- Condition: Used (Good)
+- URL: https://mercari.com/item/abc123
+- Seller: MercariUser_X, Rating: 4.9
+- Reason: This is the standard model with both dock and handheld play. It's a solid all-around option with great flexibility.
+
+- Product Name: Nintendo Switch OLED Model (White)
+- Image:
+- Price: ¥34,000
+- Condition: Like New
+- URL: https://mercari.com/item/def456
+- Seller: MercariUser_Y, Rating: 4.8
+- Reason: This model has a stunning OLED screen and is nearly brand new. Perfect if you care about display quality and premium feel.
+
+- Product Name: Nintendo Switch Lite (Yellow)
+- Image:
+- Price: ¥18,000
+- Condition: Used (Good)
+- URL: https://mercari.com/item/ghi789
+- Seller: MercariUser_Z, Rating: 4.7
+- Reason: Compact and affordable. Great for handheld gaming on the go, and excellent value if you're okay with a used one.
 `Let me know if you'd like me to look for a specific color or storage!`
 """
 
