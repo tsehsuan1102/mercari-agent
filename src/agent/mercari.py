@@ -241,7 +241,7 @@ Follow this step-by-step chain of thoughts when handling any user request:
             {"role": "system", "content": system_prompt},
             {
                 "role": "user",
-                "content": f"{user_input}. IMPORTANT: The response should be in the same language as this message.",
+                "content": f"{user_input}. IMPORTANT: Translate the response in the same language as the user's input.",
             },
         ]
         tools = [mercari_search_tool]
