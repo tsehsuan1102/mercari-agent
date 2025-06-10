@@ -22,8 +22,10 @@ async def main():
     message = result["message"]
     products = result["products"]
     print("--------------------------------")
+    print("### Message:")
     print(message)
     print("--------------------------------")
+    print("### Products:")
     print(products)
     print("--------------------------------")
 
